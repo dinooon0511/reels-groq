@@ -43,7 +43,7 @@ export async function handler(event) {
     // Allow public MCP discovery, but never invoke Groq without a valid credential.
     const secret = process.env.TRANSCRIBE_ACCESS_KEY;
     if (!secret) return json(503, { error: "Server not configured" });
-    const supplied = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\\s+/i, "");
+    const supplied = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "");
     const a = Buffer.from(supplied), b = Buffer.from(secret);
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
       return json(401, { error: "Unauthorized: connect with TRANSCRIBE_ACCESS_KEY" }, { "WWW-Authenticate": 'Bearer realm="reels-groq"' });
