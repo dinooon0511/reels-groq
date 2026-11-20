@@ -21,11 +21,6 @@ const schema = {
 export async function handler(event) {
   if (event.httpMethod === "GET") return json(200, { service: "Reels Groq MCP", status: "ready", authentication: "bearer-required" });
   if (event.httpMethod !== "POST") return json(405, { error: "POST required" });
-  const secret = process.env.TRANSCRIBE_ACCESS_KEY;
-  if (!secret) return json(503, { error: "Server not configured" });
-  const supplied = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "");
-  const a = Buffer.from(supplied), b = Buffer.from(secret);
-  if (a.length !== b.length || !timingSafeEqual(a,b)) return json(401, { error: "Unauthorized" }, { "WWW-Authenticate": "Bearer" });
   let req;
   try { req = JSON.parse(event.body || "{}"); }
   catch { return json(400, error(null,-32700,"Parse error")); }
@@ -45,6 +40,14 @@ export async function handler(event) {
     inputSchema: schema
   }] }));
   if (method === "tools/call") {
+    // Allow public MCP discovery, but never invoke Groq without a valid credential.
+    const secret = process.env.TRANSCRIBE_ACCESS_KEY;
+    if (!secret) return json(503, { error: "Server not configured" });
+    const supplied = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\\s+/i, "");
+    const a = Buffer.from(supplied), b = Buffer.from(secret);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return json(401, { error: "Unauthorized: connect with TRANSCRIBE_ACCESS_KEY" }, { "WWW-Authenticate": 'Bearer realm="reels-groq"' });
+    }
     if (params?.name !== "transcribe_audio") return json(200,error(id,-32602,"Unknown tool"));
     const args = params?.arguments || {};
     const result = await transcribe({
